@@ -1,0 +1,389 @@
+<!doctype html>
+<!-- 书剧之旅 · 音频作品集展示页面 -->
+<!-- 页面说明：结合视频开场和音频播放列表，展示多个文学改编音频作品 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>书剧之旅 · 音频作品集</title>
+  <style>
+    /* ========== CSS 自定义属性（设计系统颜色、间距、阴影） ========== */
+    :root{
+      /* 背景色：奶油色、纸张色等温暖色调 */
+      --cream:#f4ead6;
+      --paper:#ead7b8;
+      --paper2:#f8f1e4;
+      /* 文本色：墨水色系 */
+      --ink:#2f2118;
+      /* 强调色：棕色、红色、金色系 */
+      --brown:#533426;
+      --brown2:#6b402d;
+      --red:#8c4b37;
+      --red2:#a96a4f;
+      --gold:#c89b52;
+      --gold2:#e4c47f;
+      /* 边框色：浅色线条 */
+      --line:rgba(91,58,39,.20);
+      /* 阴影效果 */
+      --shadow:0 22px 70px rgba(74,43,24,.16);
+      --shadow2:0 10px 35px rgba(74,43,24,.12);
+    }
+    /* ========== 全局样式 ========== */
+    *{box-sizing:border-box}
+    /* 设置 html 和 body 的基础样式：字体、颜色、背景 */
+    html,body{margin:0;min-height:100%;font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;color:var(--ink);background:#e8d8bc}
+    body{overflow-x:hidden} /* 隐藏水平滚动条 */
+    button,input{font:inherit} /* 按钮和输入框继承字体 */
+    button{cursor:pointer} /* 按钮鼠标指针为手型 */
+
+    /* ========== 首页：全屏视频播放区域 ========== */
+    #intro{position:fixed;inset:0;background:#000;z-index:50;display:grid;place-items:center;transition:opacity .8s ease,visibility .8s ease}
+    /* 隐藏首页视频 */
+    #intro.hide{opacity:0;visibility:hidden;pointer-events:none}
+    /* 视频元素，使用 cover 使其填满整个容器 */
+    #intro video{width:100%;height:100%;object-fit:cover;background:#000}
+    /* 视频上的渐变遮罩，使下方文字更易阅读 */
+    .introFade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.18));pointer-events:none}
+    /* 首页底部提示文字：自动进入音频作品集 */
+    .introHint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);padding:10px 16px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(0,0,0,.32);backdrop-filter:blur(12px);color:rgba(255,255,255,.80);font-size:12px;letter-spacing:.09em}
+    /* 首页右下角跳过按钮 */
+    .introSkip{position:absolute;right:28px;bottom:28px;padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.30);color:#fff;letter-spacing:.06em;font-size:12px}
+
+    /* ========== 第二页：音频作品集页面 ========== */
+    #portfolio{min-height:100vh;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .8s ease,transform .8s ease;position:relative}
+    /* 显示作品集页面 */
+    #portfolio.show{opacity:1;pointer-events:auto;transform:none}
+    /* 页面背景：多层渐变和背景图 */
+    .pageBg{position:fixed;inset:0;z-index:-3;background:
+      radial-gradient(circle at 75% 10%,rgba(200,155,82,.24),transparent 28%),
+      linear-gradient(120deg,rgba(244,234,214,.96),rgba(232,216,188,.94));
+    }
+    /* 页面背景前景层：覆盖层和混合模式 */
+    .pageBg::before{content:"";position:absolute;inset:0;background:
+      linear-gradient(90deg,rgba(245,237,221,.98) 0%,rgba(244,235,216,.93) 54%,rgba(231,211,180,.84) 100%),
+      url('cover.jpg') 88% 18%/720px auto no-repeat;
+      mix-blend-mode:multiply;opacity:.34;}
+    /* 页面背景遮罩层：圆形渐变阴影 */
+    .pageBg::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 48% 40%,transparent 0 33%,rgba(74,43,24,.06) 74%,rgba(74,43,24,.10) 100%)}
+    /* 页面纹理：点状背景纹理 */
+    .texture{position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:.13;background-image:radial-gradient(rgba(72,43,24,.45) .45px, transparent .45px);background-size:5px 5px;mix-blend-mode:multiply}
+
+    /* ========== 页面主容器布局 ========== */
+    /* 内容宽度限制：最大宽度 1240px，两侧各留 32px 余白 */
+    .shell{width:min(1240px,calc(100% - 64px));margin:0 auto;padding-bottom:84px}
+    /* 顶部粘性区域：头部和当前播放信息 */
+    .stickyTop{position:sticky;top:0;z-index:20;padding-top:30px;background:linear-gradient(180deg,rgba(238,224,198,.96) 0%,rgba(238,224,198,.90) 74%,rgba(238,224,198,0) 100%);backdrop-filter:blur(12px)}
+    
+    /* ========== 页面头部 ========== */
+    .header{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;border-bottom:1px solid var(--line);padding:18px 0 26px}
+    /* 副标题：小字上标 */
+    .eyebrow{font-size:11px;letter-spacing:.30em;text-transform:uppercase;color:#94703f;margin-bottom:11px}
+    /* 主标题：大字体 */
+    h1{margin:0 0 10px;font-family:Georgia,"Songti SC","Noto Serif SC",serif;font-weight:500;font-size:clamp(44px,5.2vw,78px);line-height:.98;letter-spacing:.01em;color:#3b281d}
+    /* 副标题说明 */
+    .subtitle{font-size:14px;color:#6e5542;letter-spacing:.10em}
+    /* 右侧元数据：标签组 */
+    .meta{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    /* 单个标签样式 */
+    .tag{padding:8px 11px;border:1px solid rgba(83,52,38,.16);border-radius:999px;background:rgba(255,249,237,.44);color:#70543e;font-size:11px;letter-spacing:.06em}
+
+    /* ========== 顶部固定播放信息模块 ========== */
+    /* 当前播放信息展示容器 */
+    .now{margin:18px 0 20px;padding:18px 20px;border:1px solid rgba(91,58,39,.18);border-radius:20px;background:linear-gradient(120deg,rgba(86,50,34,.96),rgba(121,68,47,.94));color:#f7ebd8;box-shadow:var(--shadow);display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px}
+    /* 播放图标徽章 */
+    .nowBadge{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#b27657,#713824);border:1px solid rgba(239,212,163,.45);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+    .nowBadge span{font-size:19px;color:#fff6e8}
+    /* 播放信息文本容器 */
+    .nowMain{min-width:0}
+    .nowLabel{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#e6c98e;margin-bottom:4px}
+    .nowMain strong{display:block;font-family:Georgia,"Songti SC",serif;font-size:19px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* 播放描述信息：包含分隔点和文字 */
+    .nowDesc{display:flex;align-items:center;gap:8px;margin-top:7px;color:#efdcc0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* 分隔点 */
+    .dot{width:5px;height:5px;border-radius:50%;background:#d7ad67;box-shadow:0 0 0 5px rgba(215,173,103,.10);flex:none}
+    /* 实时文字显示区域 */
+    .liveText{grid-column:2/-1;margin-left:68px;margin-top:-2px;padding-top:9px;border-top:1px solid rgba(255,245,225,.12);color:#f6e6ce;font-family:"Songti SC","Noto Serif SC",serif;font-size:14px;line-height:1.55;min-height:30px;transition:opacity .2s ease}
+    /* 实时文字淡出状态 */
+    .liveText.fade{opacity:.38}
+    /* 波形动画容器 */
+    .wave{display:flex;gap:4px;align-items:end;height:32px;justify-content:flex-end;min-width:88px}
+    /* 波形条：根据播放状态产生动画 */
+    .wave i{width:4px;border-radius:5px;background:var(--gold2);opacity:.7;animation:bars 1.15s ease-in-out infinite;animation-play-state:paused}
+    /* 播放中时波形动画激活 */
+    .now.playing .wave i{animation-play-state:running}
+    /* 波形动画关键帧 */
+    @keyframes bars{50%{transform:scaleY(.35);opacity:.34}}
+
+    /* ========== 播放列表内容区域 ========== */
+    /* 内容容器 */
+    .content{padding-top:4px}
+    /* 部分标题行：标题 + 说明文字 */
+    .sectionTitle{margin:22px 0 14px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+    .sectionTitle h2{margin:0;font-family:Georgia,"Songti SC",serif;font-size:22px;font-weight:500;color:#442e21}
+    .sectionTitle p{margin:0;color:#7f6651;font-size:12px}
+    
+    /* ========== 播放列表项目样式 ========== */
+    /* 播放列表容器 */
+    .list{display:grid;gap:14px;padding-bottom:18px}
+    /* 单个播放项目卡片 */
+    .track{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:17px;align-items:center;padding:18px 18px 16px;border:1px solid rgba(83,52,38,.18);border-radius:18px;background:linear-gradient(135deg,rgba(255,248,237,.94),rgba(239,221,193,.84));box-shadow:var(--shadow2);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,background .2s ease}
+    /* 项目悬停效果 */
+    .track:hover{transform:translateY(-2px);box-shadow:0 18px 45px rgba(74,43,24,.17);border-color:rgba(142,96,57,.30)}
+    /* 项目激活（播放中）状态 */
+    .track.active{background:linear-gradient(135deg,rgba(255,246,227,.98),rgba(235,205,162,.92));border-color:rgba(173,126,63,.46);box-shadow:0 20px 50px rgba(102,59,28,.18)}
+    /* 播放按钮 */
+    .playBtn{width:54px;height:54px;border-radius:50%;border:1px solid rgba(244,222,183,.54);background:linear-gradient(145deg,#a96649,#723827);color:#fff;display:grid;place-items:center;font-size:18px;box-shadow:0 10px 22px rgba(92,46,27,.18),inset 0 0 0 1px rgba(255,255,255,.08)}
+    .playBtn:active{transform:scale(.96)}
+    
+    /* ========== 播放项目内容 ========== */
+    .trackInfo{min-width:0}
+    .trackTop{display:flex;align-items:center;gap:10px}
+    /* 序号 */
+    .index{font-family:Georgia,serif;font-size:13px;letter-spacing:.08em;color:#ab7b3f}
+    /* 曲目标题 */
+    .trackTitle{font-family:Georgia,"Songti SC",serif;font-size:18px;font-weight:500;color:#4a3022;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* 曲目描述 */
+    .trackMeta{font-size:12px;color:#7c604a;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* 进度条行 */
+    .progressRow{margin-top:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:11px}
+    /* 进度条 */
+    .progress{height:6px;border-radius:999px;background:rgba(72,43,24,.10);position:relative;cursor:pointer;overflow:visible}
+    /* 进度条填充部分 */
+    .progressFill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:999px;background:linear-gradient(90deg,#a45f45,#d7ab61)}
+    /* 进度点 */
+    .progressDot{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:#e2bf7e;box-shadow:0 0 0 3px rgba(226,191,126,.18);opacity:0;transition:opacity .15s ease}
+    .track.active .progressDot{opacity:1}
+    /* 时间显示 */
+    .time{font-variant-numeric:tabular-nums;font-size:11px;color:#846b56;min-width:70px;text-align:right}
+    
+    /* ========== 播放列表操作区 ========== */
+    .trackActions{display:flex;align-items:center;gap:12px;min-width:152px;justify-content:flex-end}
+    /* 音量控制容器 */
+    .volumeWrap{display:flex;align-items:center;gap:7px;color:#6b513e;font-size:11px;padding:7px 9px;border:1px solid rgba(83,52,38,.14);border-radius:12px;background:rgba(255,251,240,.56)}
+    .volumeIcon{width:17px;height:17px;display:block;flex:none}
+    .volumeWrap input{width:72px;accent-color:#b57c42}
+    /* 播放提示文字 */
+    .trackHint{position:absolute;right:18px;top:14px;font-size:10px;letter-spacing:.04em;color:#a07a4f;opacity:0;transition:opacity .18s}
+    .track:hover .trackHint{opacity:1}
+
+    /* ========== 页脚 ========== */
+    .footer{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-top:16px;border-top:1px solid var(--line);color:#7e6652;font-size:11px}
+    /* 返回首页按钮 */
+    .back{padding:9px 13px;border:1px solid rgba(83,52,38,.18);border-radius:999px;background:rgba(255,248,237,.54);color:#674a36}
+
+    /* ========== 响应式设计 ========== */
+    /* 平板设备及以下（最大宽度 900px）*/
+    @media(max-width:900px){
+      .shell{width:min(100% - 28px,700px)}
+      .header{align-items:flex-start;flex-direction:column}
+      .meta{justify-content:flex-start}
+      .now{grid-template-columns:auto 1fr}
+      .wave{display:none}
+      .liveText{grid-column:2;margin-left:0}
+      .track{grid-template-columns:auto minmax(0,1fr)}
+      .trackActions{grid-column:2;justify-content:flex-start;min-width:0}
+      .trackHint{display:none}
+      .volumeWrap input{width:90px}
+    }
+    
+    /* 手机设备（最大宽度 560px）*/
+    @media(max-width:560px){
+      .stickyTop{padding-top:16px}
+      .shell{width:calc(100% - 20px)}
+      h1{font-size:48px}
+      .subtitle{font-size:12px;line-height:1.6}
+      .now{padding:15px}
+      .nowMain strong{font-size:16px}
+      .nowDesc{font-size:11px}
+      .liveText{font-size:12px}
+      .track{padding:15px}
+      .playBtn{width:48px;height:48px}
+      .trackTitle{font-size:16px}
+      .trackMeta{font-size:11px}
+      .progressRow{grid-template-columns:1fr}
+      .time{text-align:left}
+      .footer{flex-direction:column;align-items:flex-start}
+    }
+  h1{font-size:48px}.subtitle{font-size:12px;line-height:1.6}.now{padding:15px}.nowMain strong{font-size:16px}.nowDesc{font-size:11px}.liveText{font-size:12px}.track{padding:15px}.playBtn{width:48px;height:48px}.trackTitle{font-size:16px}.trackMeta{font-size:11px}.progressRow{grid-template-columns:1fr}.time{text-align:left}.footer{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<section id="intro" aria-label="开场视频">
+  <video id="introVideo" autoplay muted playsinline preload="auto">
+    <source src="intro.mp4" type="video/mp4">
+  </video>
+  <div class="introFade"></div>
+  <div class="introHint">开场视频播放结束后，自动进入音频作品集</div>
+  <button class="introSkip" id="skipIntro">跳过开场 →</button>
+</section>
+
+<main id="portfolio">
+  <div class="pageBg"></div><div class="texture"></div>
+  <div class="shell">
+    <div class="stickyTop">
+      <header class="header">
+        <div>
+          <div class="eyebrow">AUDIO WORKS · BOOK TO SCREEN</div>
+          <h1>书剧之旅</h1>
+          <div class="subtitle">领略文字与影像之间的独特魅力 · 音频作品展示</div>
+        </div>
+        <div class="meta"><span class="tag">5 TRACKS</span><span class="tag">PLAYLIST</span><span class="tag">2026</span></div>
+      </header>
+
+      <section class="now" id="nowPlaying">
+        <div class="nowBadge"><span>▶</span></div>
+        <div class="nowMain">
+          <div class="nowLabel">NOW PLAYING</div>
+          <strong id="nowTitle">尚未播放</strong>
+          <div class="nowDesc"><span class="dot"></span><span id="nowDesc">点击下方作品开始播放</span></div>
+        </div>
+        <div class="wave" aria-hidden="true"><i style="height:12px"></i><i style="height:24px"></i><i style="height:16px"></i><i style="height:28px"></i><i style="height:10px"></i><i style="height:20px"></i><i style="height:15px"></i></div>
+        <div class="liveText" id="liveText">— 选择一段声音，让故事从这里开始。</div>
+      </section>
+    </div>
+
+    <section class="content">
+      <div class="sectionTitle"><h2>作品播放列表</h2><p>点击播放 / 拖动进度条控制进度</p></div>
+      <section class="list" id="playlist"></section>
+      <footer class="footer"><span>BOOK → SCRIPT → STAGE → AUDIO</span><button class="back" id="backIntro">重新播放首页</button></footer>
+    </section>
+  </div>
+</main>
+
+<script>
+  /* ========== DOM 元素获取 ========== */
+  const intro=document.getElementById('intro'); /* 首页视频容器 */
+  const video=document.getElementById('introVideo'); /* 首页视频元素 */
+  const portfolio=document.getElementById('portfolio'); /* 音频作品集容器 */
+  const playlist=document.getElementById('playlist'); /* 播放列表容器 */
+  const now=document.getElementById('nowPlaying'); /* 当前播放信息模块 */
+  const nowTitle=document.getElementById('nowTitle'); /* 当前播放标题 */
+  const nowDesc=document.getElementById('nowDesc'); /* 当前播放描述 */
+  const liveText=document.getElementById('liveText'); /* 实时文字显示 */
+  const backIntro=document.getElementById('backIntro'); /* 返回首页按钮 */
+  const skipIntro=document.getElementById('skipIntro'); /* 跳过首页按钮 */
+  
+  const audioFile='track.mp3'; /* 音频文件路径 */
+  let active=null; /* 当前活跃播放的音频对象 */
+
+  /* ========== 播放列表数据 ========== */
+  const tracks=[
+   {title:'作品一 · 书页初醒',note:'以文字为起点，进入想象的第一幕',lines:[[0,'翻开一页，故事开始有了声音。'],[1.15,'纸页轻响，想象从字里行间醒来。'],[2.45,'一个角色出现，第一幕悄然展开。'],[3.7,'声音沿着书页向前，抵达故事深处。']]},
+   {title:'作品二 · 镜头入场',note:'从剧本走向镜头，故事开始被看见',lines:[[0,'当文字成为画面，故事开始拥有方向。'],[1.2,'镜头靠近人物，也靠近他的心事。'],[2.5,'一声对白，空间瞬间有了温度。'],[3.8,'从剧本到镜头，想象正在被看见。']]},
+   {title:'作品三 · 舞台之外',note:'保留舞台的呼吸与现场感',lines:[[0,'舞台之外，声音仍然留下呼吸。'],[1.1,'脚步、停顿与环境声组成另一层叙事。'],[2.35,'观众看不见的细节，也值得被听见。'],[3.7,'当灯光熄灭，故事仍在继续。']]},
+   {title:'作品四 · 光影回响',note:'声音与光影交叠，留下回声',lines:[[0,'光影散去之后，声音留下回声。'],[1.25,'旋律与环境交错，情绪缓慢浮现。'],[2.55,'记忆被重新点亮，像舞台上的一束光。'],[3.85,'回声向远处延伸，故事不止于此。']]},
+   {title:'作品五 · 旅程抵达',note:'从书页出发，终于抵达属于你的故事',lines:[[0,'每一段旅程，都从一页文字开始。'],[1.15,'声音带着故事穿过时间与画面。'],[2.5,'走到这里，书页已经变成了一场体验。'],[3.8,'旅程抵达，而故事留在你的耳边。']]}
+  ];
+
+  /* ========== 页面状态切换函数 ========== */
+  /* 隐藏首页视频，显示音频作品集 */
+  function enterPortfolio(){intro.classList.add('hide');portfolio.classList.add('show');}
+  
+  /* 返回首页：重置视频并播放 */
+  function showIntro(){
+    portfolio.classList.remove('show'); intro.classList.remove('hide');
+    video.currentTime=0; video.play().catch(()=>{});
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  
+  /* ========== 首页视频事件监听 ========== */
+  video.addEventListener('ended',enterPortfolio); /* 视频播放结束后进入作品集 */
+  video.addEventListener('error',()=>setTimeout(enterPortfolio,1000)); /* 视频加载错误时延迟进入 */
+  skipIntro.addEventListener('click',enterPortfolio); /* 点击跳过按钮进入作品集 */
+  backIntro.addEventListener('click',showIntro); /* 点击返回首页按钮 */
+  
+  /* ========== 工具函数 ========== */
+  /* 将秒数转换为 MM:SS 格式 */
+  function fmt(sec){
+    if(!isFinite(sec))return'00:00';
+    sec=Math.max(0,Math.floor(sec));
+    const m=String(Math.floor(sec/60)).padStart(2,'0');
+    const s=String(sec%60).padStart(2,'0');
+    return `${m}:${s}`;
+  }
+  
+  /* 根据当前时间获取对应的文字内容 */
+  function currentLine(lines,t){
+    let line=lines[0]?.[1]||'';
+    for(const [at,text] of lines){
+      if(t>=at)line=text;
+      else break
+    }
+    return line;
+  }
+
+  /* ========== 播放控制函数 ========== */
+  /* 停止播放（除指定音频外的其他音频） */
+  function stopActive(except){
+    if(active && active.audio!==except){
+      active.audio.pause();
+      active.el.classList.remove('active');
+      active.btn.querySelector('.icon').textContent='▶';
+    }
+  }
+
+  /* 更新当前播放信息显示 */
+  function updateNow(i,t){
+    nowTitle.textContent=tracks[i].title;
+    nowDesc.textContent=tracks[i].note;
+    const text=currentLine(tracks[i].lines,t);
+    if(liveText.textContent!==text){
+      liveText.classList.add('fade');
+      setTimeout(()=>{liveText.textContent=text;liveText.classList.remove('fade')},120)
+    }
+  }
+
+  /* ========== 构建单个播放列表项目 ========== */
+  function buildTrack(i){
+    const el=document.createElement('article');
+    el.className='track';
+    el.dataset.index=i;
+  el.innerHTML=`
+    <button class="playBtn" aria-label="播放 ${tracks[i].title}"><span class="icon">▶</span></button>
+    <div class="trackInfo">
+      <div class="trackTop"><span class="index">0${i+1}</span><span class="trackTitle">${tracks[i].title}</span></div>
+      <div class="trackMeta">${tracks[i].note}</div>
+      <div class="progressRow">
+        <div class="progress" aria-label="播放进度"><span class="progressFill"></span><span class="progressDot"></span></div>
+        <span class="time">00:00 / --:--</span>
+      </div>
+    </div>
+    <div class="trackActions">
+      <div class="volumeWrap" title="调节当前作品播放音量">
+        <svg class="volumeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M17 9.2c.8.8 1.2 1.7 1.2 2.8s-.4 2-1.2 2.8"/><path d="M19.6 6.8c1.4 1.4 2.1 3.2 2.1 5.2s-.7 3.8-2.1 5.2"/></svg>
+        <span>音量</span><input type="range" min="0" max="1" step="0.01" value="0.9" aria-label="音量">
+      </div>
+    </div>
+    <div class="trackHint">正在播放时可实时查看文字</div>`;
+
+  const audio=new Audio(audioFile);audio.preload='metadata';audio.volume=.9;
+  const btn=el.querySelector('.playBtn');const icon=el.querySelector('.icon');const fill=el.querySelector('.progressFill');const dot=el.querySelector('.progressDot');const progress=el.querySelector('.progress');const time=el.querySelector('.time');const vol=el.querySelector('input');
+
+  const setProgress=()=>{const pct=audio.duration?audio.currentTime/audio.duration*100:0;fill.style.width=pct+'%';dot.style.left=pct+'%';time.textContent=`${fmt(audio.currentTime)} / ${fmt(audio.duration)}`};
+
+  btn.addEventListener('click',()=>{
+    if(audio.paused){
+      stopActive(audio);
+      active={audio,el,btn};
+      audio.play().catch(()=>{});
+      el.classList.add('active');icon.textContent='Ⅱ';now.classList.add('playing');updateNow(i,audio.currentTime);
+    }else{
+      audio.pause();icon.textContent='▶';if(active?.audio===audio){now.classList.remove('playing')}
+    }
+  });
+  audio.addEventListener('loadedmetadata',()=>{time.textContent=`00:00 / ${fmt(audio.duration)}`;setProgress()});
+  audio.addEventListener('timeupdate',()=>{setProgress();if(active?.audio===audio)updateNow(i,audio.currentTime)});
+  audio.addEventListener('play',()=>{el.classList.add('active');icon.textContent='Ⅱ';now.classList.add('playing');updateNow(i,audio.currentTime)});
+  audio.addEventListener('pause',()=>{icon.textContent='▶';if(active?.audio===audio)now.classList.remove('playing')});
+  audio.addEventListener('ended',()=>{setProgress();icon.textContent='▶';el.classList.remove('active');if(active?.audio===audio){now.classList.remove('playing');liveText.textContent='— 本段播放结束，可继续选择下一件作品。';active=null}});
+  progress.addEventListener('click',e=>{
+    if(!audio.duration)return;const r=progress.getBoundingClientRect();const p=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));audio.currentTime=p*audio.duration;setProgress();updateNow(i,audio.currentTime);if(audio.paused){stopActive(audio);active={audio,el,btn};audio.play().catch(()=>{});el.classList.add('active');icon.textContent='Ⅱ';now.classList.add('playing');}
+  });
+  vol.addEventListener('input',()=>{audio.volume=Number(vol.value)});
+  playlist.appendChild(el);
+}
+tracks.forEach((_,i)=>buildTrack(i));
+</script>
+</body>
+</html>
